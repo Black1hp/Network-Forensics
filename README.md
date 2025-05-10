@@ -1,109 +1,185 @@
-# Network Forensics - Suricata Monitor
+# 🔍 Network Traffic Analysis System with IDS
 
-A real-time monitoring application for Suricata IDS (Intrusion Detection System) logs, providing visualization and analysis tools for network security events.
+A real-time network traffic analysis system with Intrusion Detection System (IDS) capabilities, featuring a modern web interface and machine learning-based threat detection.
 
-## Features
+## ⭐ Features
 
-- Real-time log monitoring and visualization
-- Event filtering and searching
-- Statistical analysis of network traffic and security events
-- Interactive dashboard with charts and graphs
-- Socket-based real-time updates
+- 🔄 Real-time network traffic monitoring using Suricata
+- 🌐 Modern web interface with real-time updates
+- 🤖 Machine learning-based traffic analysis
+- 🚨 Customizable alert system
+- 📊 Traffic visualization and statistics
+- 🛡️ IP and Port blocking capabilities
+- 📝 Protocol analysis and classification
+- 🌐 DNS traffic monitoring
+- 📈 Throughput and packet size analysis
 
-## Tech Stack
+## 📋 Prerequisites
 
-- **Frontend**: React, TypeScript, Chakra UI, Recharts, React Query
-- **Backend**: Node.js, Express, Socket.io
-- **Build Tools**: Vite, TypeScript
-- **Styling**: TailwindCSS
+- 🐍 Python 3.8 or higher
+- 📦 Node.js 14.x or higher
+- 🛡️ Suricata 6.0 or higher
+- 💻 Linux/Unix-based system
+- 🔄 Git
 
-## Prerequisites
+## 🚀 Installation
 
-- Node.js (v16+)
-- npm or yarn
-- **Suricata IDS** must be installed and running on the system with logs at `/var/log/suricata/eve.json`
-
-## Installation
-
-Clone the repository:
+1. Clone the repository:
 ```bash
-git clone https://github.com/Black1hp/Network-Forensics.git
-cd Network-Forensics
+git clone https://github.com/Black1hp/Packet-Analyzer.git
+cd Packet-Analyzer
 ```
 
-Install dependencies:
+2. Set up the backend:
 ```bash
+cd backend
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+3. Set up the frontend:
+```bash
+cd ../frontend
 npm install
 ```
 
-## Suricata Configuration
-
-**IMPORTANT: This application requires Suricata to be installed and running with logs configured at `/var/log/suricata/eve.json`.**
-
-1. If you haven't already, install Suricata:
+4. Configure Suricata:
 ```bash
+# Install Suricata
 sudo apt-get update
 sudo apt-get install suricata
+
+# Backup existing configuration
+sudo cp /etc/suricata/suricata.yaml /etc/suricata/suricata.yaml.bak
+
+# Copy our template
+sudo cp backend/suricata-config.yaml /etc/suricata/suricata.yaml
 ```
 
-2. Configure Suricata using the provided configuration file:
+Important configurations to check/modify in suricata.yaml:
+- Replace `eth0` with your network interface name
+- Adjust memory settings based on your system
+- Verify the log paths:
+  - EVE log: `/var/log/suricata/eve.json`
+  - Main log: `/var/log/suricata/suricata.log`
+
+5. Set up environment variables:
 ```bash
-sudo cp backend/suricata.yaml /etc/suricata/
-sudo systemctl restart suricata
+cd ../backend
+cp .env.example .env
+```
+Edit the .env file with your configuration:
+```
+SMTP_SERVER=your_smtp_server
+SMTP_PORT=587
+SENDER_EMAIL=your_email
+SENDER_PASSWORD=your_password
+ADMIN_EMAIL=admin_email
+ALERT_COOLDOWN_MINUTES=5
 ```
 
-3. Verify Suricata is running and generating logs:
+## 🎮 Usage
+
+1. Start Suricata:
 ```bash
-sudo systemctl status suricata
-ls -la /var/log/suricata/eve.json
+# Test the configuration
+sudo suricata -T -c /etc/suricata/suricata.yaml
+
+# Start Suricata
+sudo suricata -c /etc/suricata/suricata.yaml -i <your-network-interface>
 ```
 
-## Usage
-
-### Development
-
-Start the backend server:
+2. Start the backend server:
 ```bash
-npm run backend
+cd backend
+source venv/bin/activate
+python server.py
 ```
 
-Start the frontend development server:
+3. Start the Suricata integration:
 ```bash
+python suricata_integration.py --log-path /var/log/suricata/eve.json
+```
+
+4. Start the frontend development server:
+```bash
+cd frontend
 npm run dev
 ```
 
-### Production
+5. Access the web interface:
+Open your browser and navigate to `http://localhost:3000`
 
-Build the application:
-```bash
-npm run build
-```
+## 🛠️ Features Usage
 
-Preview the production build:
-```bash
-npm run preview
-```
+### 🔍 Real-time Traffic Monitoring
+- 👀 View live network traffic in the main dashboard
+- 🔎 Filter traffic by protocol, IP, or port
+- 📝 View detailed packet information by clicking on individual entries
 
-## Project Structure
+### 🛡️ Blocking Rules
+1. IP Blocking:
+   - 🚫 Navigate to the "Blocking Rules" section
+   - ➕ Add IP addresses to block
+   - 📋 View and manage blocked IPs
 
-- `/src` - Frontend React application
-  - `/components` - React components
-  - `/hooks` - Custom React hooks
-  - `/services` - API service functions
-  - `/types` - TypeScript type definitions
-  - `/utils` - Utility functions
-- `/backend` - Node.js server
-  - `server.js` - Express server setup and socket logic
-  - `suricata.yaml` - Sample Suricata configuration
+2. Port Blocking:
+   - 🔒 Add source or destination ports to block
+   - ⚙️ Set port blocking rules by protocol
 
-## License
+### ⚠️ Alerts
+- 🎚️ Configure alert thresholds in the settings
+- 🔔 View alerts in real-time
+- 📤 Export alert logs
+- 📧 Receive email notifications for critical events
 
-See the [LICENSE](LICENSE) file for details.
+### 📊 Traffic Analysis
+- 📈 View traffic patterns and statistics
+- 🔄 Analyze protocol distribution
+- 📉 Monitor network throughput
+- 🌐 Track DNS queries and responses
 
-## Contributing
+## ❗ Troubleshooting
+
+1. If Suricata fails to start:
+   - 🔍 Check if the network interface is correct in suricata.yaml
+   - 📝 Run `sudo suricata -T -c /etc/suricata/suricata.yaml` to test configuration
+   - 🔑 Check system permissions for log directories
+   - 💾 Verify memory settings match your system capabilities
+   - 🌐 Ensure the network interface supports monitoring mode
+
+2. If the backend server fails:
+   - ✅ Verify Python virtual environment is activated
+   - 📦 Check all dependencies are installed
+   - 🔌 Verify port 5000 is available
+   - 📁 Check if Suricata logs exist and are readable
+
+3. If the frontend fails to connect:
+   - 🔄 Check if backend server is running
+   - 🌐 Verify WebSocket connection
+   - 🔍 Check browser console for errors
+   - 📊 Verify data is being written to eve.json
+
+## 👥 Team Members
+1. Mohamed Saied
+2. Ahmed Eldesouki 
+3. Mohamed Wael 
+4. Essameldin Amr
+5. Ahmed Abdelmoniem
+6. Marwan HossamEldin
+7. Randa Emam
+8. Monira Mahmoud
+9. Ahmed Tarek
+
+## 🤝 Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details. 

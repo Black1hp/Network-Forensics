@@ -1,39 +1,26 @@
 {
-  "name": "suricata-monitor",
+  "name": "vite-react-typescript-starter",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview",
-    "backend": "node backend/server.js"
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@chakra-ui/react": "^2.8.2",
-    "@emotion/react": "^11.11.3",
-    "@emotion/styled": "^11.11.0",
-    "@tanstack/react-query": "^5.17.15",
-    "axios": "^1.6.5",
-    "cors": "^2.8.5",
-    "date-fns": "^3.2.0",
-    "express": "^4.21.2",
-    "framer-motion": "^10.18.0",
+    "clsx": "^2.1.0",
+    "date-fns": "^3.3.1",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-virtualized": "^9.22.5",
-    "recharts": "^2.10.3",
-    "socket.io-client": "^4.7.4",
-    "tail": "^2.2.6",
-    "ws": "^8.18.1"
+    "socket.io-client": "^4.7.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
-    "@types/react-virtualized": "^9.21.29",
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.18",
     "eslint": "^9.9.1",
@@ -44,6 +31,6 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
-    "vite": "^6.3.2"
+    "vite": "^6.2.5"
   }
 }

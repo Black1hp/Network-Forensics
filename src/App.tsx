@@ -1,152 +1,87 @@
-import React, { useState, useCallback } from 'react';
-import { ChakraProvider, Box, Flex, Container, extendTheme, ColorModeScript } from '@chakra-ui/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import LogsTable from './components/dashboard/LogsTable';
-import FilterPanel from './components/dashboard/FilterPanel';
-import StatsPanel from './components/dashboard/StatsPanel';
-import DetailModal from './components/dashboard/DetailModal';
-import ErrorBoundary from './components/shared/ErrorBoundary';
-import LoadingSpinner from './components/shared/LoadingSpinner';
-import { useLogsFetching } from './hooks/useLogsFetching';
-import { useWebSocket } from './hooks/useWebSocket';
-import { LogEntry } from './types';
-import Header from './components/layout/Header';
+import React from 'react';
+import { Shield, Wifi, WifiOff } from 'lucide-react';
+import { SearchBar } from './components/SearchBar';
+import { ProtocolFilter } from './components/ProtocolFilter';
+import { PacketTable } from './components/PacketTable';
+import { AdminPanel } from './components/admin/AdminPanel';
+import { usePackets } from './hooks/usePackets';
+import { StatusFilter } from './components/StatusFilter';
 
-// Create a theme
-const theme = extendTheme({
-  colors: {
-    brand: {
-      50: '#e0f0ff',
-      100: '#b1dbff',
-      200: '#81c6ff',
-      300: '#51b0ff',
-      400: '#219bff',
-      500: '#0080e6',
-      600: '#0064b4',
-      700: '#004782',
-      800: '#002b51',
-      900: '#001021',
-    },
-  },
-  fonts: {
-    heading: 'Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-    body: 'Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif',
-  },
-  config: {
-    initialColorMode: 'light',
-    useSystemColorMode: true,
-  },
-});
-
-// Create React Query client
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
-
-// Inner component that uses React Query hooks
-function LogsDashboard() {
-  const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-
+export default function App() {
   const {
-    logs,
-    addLog,
-    filters,
-    updateFilters,
-    resetFilters,
-    isLogsLoading,
-    logsError,
-    stats,
-    isStatsLoading,
-    statsError,
-  } = useLogsFetching();
-
-  // Set up WebSocket connection
-  const { isConnected: isWebSocketConnected } = useWebSocket({
-    onNewLog: (log) => {
-      addLog(log);
-    },
-  });
-
-  const handleViewDetails = useCallback((log: LogEntry) => {
-    setSelectedLog(log);
-    setIsDetailModalOpen(true);
-  }, []);
-
-  const handleCloseDetailModal = useCallback(() => {
-    setIsDetailModalOpen(false);
-  }, []);
+    packets,
+    searchTerm,
+    setSearchTerm,
+    selectedProtocol,
+    setSelectedProtocol,
+    showOnlySuspicious,
+    setShowOnlySuspicious,
+    isConnected
+  } = usePackets();
 
   return (
-    <ErrorBoundary>
-      <Box minH="100vh" bg="gray.50" _dark={{ bg: 'gray.900' }}>
-        <Header 
-          isWebSocketConnected={isWebSocketConnected} 
-          totalLogs={stats?.totalLogs || 0}
-        />
-        
-        <Container maxW="container.xl" py={6}>
-          <FilterPanel
-            filters={filters}
-            onUpdateFilters={updateFilters}
-            onResetFilters={resetFilters}
-            isLoading={isLogsLoading}
-          />
+    <div className="min-h-screen bg-gray-100">
+      {/* Header Section */}
+      <div className="w-full bg-white shadow-sm mb-6">
+        <div className="max-w-[98%] mx-auto px-4 py-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Shield className="h-8 w-8 text-blue-600 mr-3" />
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Network Intrusion Detection System
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">by Silent Guardians</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {isConnected ? (
+                <Wifi className="h-5 w-5 text-green-500" />
+              ) : (
+                <WifiOff className="h-5 w-5 text-red-500" />
+              )}
+              <span className={`text-sm ${isConnected ? 'text-green-500' : 'text-red-500'}`}>
+                {isConnected ? 'Connected' : 'Disconnected'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
 
-          <ErrorBoundary>
-            {isStatsLoading && !stats ? (
-              <LoadingSpinner message="Loading statistics..." />
-            ) : statsError ? (
-              <Box p={4} bg="red.50" color="red.800" borderRadius="md" mb={4}>
-                Error loading statistics: {statsError.message}
-              </Box>
-            ) : (
-              <StatsPanel stats={stats} isLoading={isStatsLoading} />
-            )}
-          </ErrorBoundary>
+      {/* Main Content */}
+      <div className="max-w-[98%] mx-auto px-4">
+        <div className="space-y-6">
+          {/* Admin Panel Card */}
+          <div className="bg-white rounded-lg shadow-sm p-6 transition-all hover:shadow-md">
+            <AdminPanel />
+          </div>
 
-          <ErrorBoundary>
-            {isLogsLoading && logs.length === 0 ? (
-              <LoadingSpinner message="Loading logs..." />
-            ) : logsError ? (
-              <Box p={4} bg="red.50" color="red.800" borderRadius="md">
-                Error loading logs: {logsError.message}
-              </Box>
-            ) : (
-              <LogsTable
-                logs={logs}
-                isLoading={isLogsLoading}
-                onViewDetails={handleViewDetails}
-              />
-            )}
-          </ErrorBoundary>
-        </Container>
-      </Box>
+          {/* Main Data Card */}
+          <div className="bg-white rounded-lg shadow-sm p-6 transition-all hover:shadow-md">
+            <div className="flex flex-wrap gap-4 mb-6">
+              <div className="flex-1 min-w-[300px]">
+                <SearchBar
+                  value={searchTerm}
+                  onChange={setSearchTerm}
+                  onClear={() => setSearchTerm('')}
+                />
+              </div>
+              <div className="flex gap-4 flex-wrap">
+                <ProtocolFilter
+                  value={selectedProtocol}
+                  onChange={setSelectedProtocol}
+                />
+                <StatusFilter
+                  value={showOnlySuspicious}
+                  onChange={setShowOnlySuspicious}
+                />
+              </div>
+            </div>
 
-      <DetailModal
-        isOpen={isDetailModalOpen}
-        onClose={handleCloseDetailModal}
-        log={selectedLog}
-      />
-    </ErrorBoundary>
+            <PacketTable packets={packets} />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
-
-// Main App component that provides the React Query context
-function App() {
-  return (
-    <ChakraProvider theme={theme}>
-      <ColorModeScript initialColorMode={theme.config.initialColorMode} />
-      <QueryClientProvider client={queryClient}>
-        <LogsDashboard />
-      </QueryClientProvider>
-    </ChakraProvider>
-  );
-}
-
-export default App;
