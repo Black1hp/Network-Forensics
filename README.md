@@ -163,14 +163,10 @@ Open your browser and navigate to `http://localhost:3000`
 
 ## 👥 Team Members
 1. Mohamed Saied
-2. Ahmed Eldesouki 
-3. Mohamed Wael 
-4. Essameldin Amr
-5. Ahmed Abdelmoniem
-6. Marwan HossamEldin
-7. Randa Emam
-8. Monira Mahmoud
-9. Ahmed Tarek
+2. Mohamed Tarek
+3. Kamel Ahmed
+4. larry shenouda
+
 
 ## 🤝 Contributing
 
