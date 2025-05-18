@@ -1,181 +1,143 @@
-# 🔍 Network Traffic Analysis System with IDS
+# Network Forensics IDS Project
 
-A real-time network traffic analysis system with Intrusion Detection System (IDS) capabilities, featuring a modern web interface and machine learning-based threat detection.
+This project is an Intrusion Detection System (IDS) designed to detect various network attacks including Port Scanning, ICMP Flooding, and DDoS attacks. The system integrates Suricata with custom detection modules and provides a web-based dashboard for monitoring and alerts.
 
-## ⭐ Features
+## Features
 
-- 🔄 Real-time network traffic monitoring using Suricata
-- 🌐 Modern web interface with real-time updates
-- 🤖 Machine learning-based traffic analysis
-- 🚨 Customizable alert system
-- 📊 Traffic visualization and statistics
-- 🛡️ IP and Port blocking capabilities
-- 📝 Protocol analysis and classification
-- 🌐 DNS traffic monitoring
-- 📈 Throughput and packet size analysis
+- **Port Scan Detection**: Uses machine learning to identify port scanning activities
+- **ICMP Flood Detection**: Detects ICMP flood attacks through traffic analysis
+- **Suricata Integration**: Leverages Suricata's powerful detection capabilities
+- **Real-time Alerts**: Email notifications for detected threats
+- **Web Dashboard**: React-based frontend for monitoring system status and alerts
 
-## 📋 Prerequisites
+## Prerequisites
 
-- 🐍 Python 3.8 or higher
-- 📦 Node.js 14.x or higher
-- 🛡️ Suricata 6.0 or higher
-- 💻 Linux/Unix-based system
-- 🔄 Git
+- Python 3.8+
+- Node.js 14+
+- npm or yarn
+- Suricata (optional, for full functionality)
 
-## 🚀 Installation
+## Installation
 
 1. Clone the repository:
-```bash
-git clone https://github.com/Black1hp/Packet-Analyzer.git
-cd Packet-Analyzer
+   ```
+   git clone https://github.com/yourusername/Network-Forensics.git
+   cd Network-Forensics
+   ```
+
+2. Install backend dependencies:
+   ```
+   pip install -r backend/requirements.txt
+   ```
+
+3. Install frontend dependencies:
+   ```
+   cd frontend
+   npm install
+   cd ..
+   ```
+
+4. Configure environment variables:
+   - Copy the `.env.example` file to `.env`
+   - Update the values in `.env` to match your environment
+
+## Usage
+
+### Starting the IDS
+
+The project has been integrated to run with minimal terminal usage. Simply use:
+
+```
+./start.sh
 ```
 
-2. Set up the backend:
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+This script will:
+1. Start the backend Flask server
+2. Start the Suricata integration module
+3. Start the React frontend development server
+4. Log all output to the `logs` directory
+
+### Stopping the IDS
+
+To stop all components:
+
+```
+./stop.sh
 ```
 
-3. Set up the frontend:
-```bash
-cd ../frontend
-npm install
+### Manual Component Execution (if needed)
+
+If you need to run components individually:
+
+1. Backend Server:
+   ```
+   python backend/server.py
+   ```
+
+2. Suricata Integration:
+   ```
+   python backend/suricata_integration.py
+   ```
+
+3. Frontend:
+   ```
+   cd frontend
+   npm run dev
+   ```
+
+## Project Structure
+
+```
+Network-Forensics/
+├── .env                    # Environment configuration
+├── test_eve.json          # Test data for Suricata
+├── start.sh               # Script to start all components
+├── stop.sh                # Script to stop all components
+├── backend/
+│   ├── server.py          # Main Flask server
+│   ├── suricata_integration.py  # Suricata integration
+│   ├── suricata.yaml      # Suricata configuration
+│   ├── requirements.txt   # Python dependencies
+│   ├── ml_port_scan_detector/  # Port scan detection module
+│   │   ├── ml_portscan_detector.py
+│   │   ├── portscan_detector_model.pkl
+│   │   └── scaler.pkl
+│   └── icmp_detector/     # ICMP flood detection module
+│       └── icmp_flood_detector_final.py
+└── frontend/              # React frontend application
+    ├── src/               # Source code
+    ├── package.json       # Node.js dependencies
+    └── ...                # Other frontend configuration files
 ```
 
-4. Configure Suricata:
-```bash
-# Install Suricata
-sudo apt-get update
-sudo apt-get install suricata
+## Testing Attacks
 
-# Backup existing configuration
-sudo cp /etc/suricata/suricata.yaml /etc/suricata/suricata.yaml.bak
+### Port Scanning Test
 
-# Copy our template
-sudo cp backend/suricata-config.yaml /etc/suricata/suricata.yaml
+You can test port scanning detection using tools like nmap:
+
+```
+nmap -p 1-1000 [target_ip]
 ```
 
-Important configurations to check/modify in suricata.yaml:
-- Replace `eth0` with your network interface name
-- Adjust memory settings based on your system
-- Verify the log paths:
-  - EVE log: `/var/log/suricata/eve.json`
-  - Main log: `/var/log/suricata/suricata.log`
+### ICMP Flood Test
 
-5. Set up environment variables:
-```bash
-cd ../backend
-cp .env.example .env
+To test ICMP flood detection:
+
 ```
-Edit the .env file with your configuration:
-```
-SMTP_SERVER=your_smtp_server
-SMTP_PORT=587
-SENDER_EMAIL=your_email
-SENDER_PASSWORD=your_password
-ADMIN_EMAIL=admin_email
-ALERT_COOLDOWN_MINUTES=5
+ping -f [target_ip]
 ```
 
-## 🎮 Usage
+## Troubleshooting
 
-1. Start Suricata:
-```bash
-# Test the configuration
-sudo suricata -T -c /etc/suricata/suricata.yaml
+- Check the log files in the `logs` directory for error messages
+- Ensure all required ports are available (default: 3000 for frontend, 5000 for backend)
+- Verify that the `.env` file contains correct configuration values
 
-# Start Suricata
-sudo suricata -c /etc/suricata/suricata.yaml -i <your-network-interface>
-```
+## Contributing
 
-2. Start the backend server:
-```bash
-cd backend
-source venv/bin/activate
-python server.py
-```
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-3. Start the Suricata integration:
-```bash
-python suricata_integration.py --log-path /var/log/suricata/eve.json
-```
+## License
 
-4. Start the frontend development server:
-```bash
-cd frontend
-npm run dev
-```
-
-5. Access the web interface:
-Open your browser and navigate to `http://localhost:3000`
-
-## 🛠️ Features Usage
-
-### 🔍 Real-time Traffic Monitoring
-- 👀 View live network traffic in the main dashboard
-- 🔎 Filter traffic by protocol, IP, or port
-- 📝 View detailed packet information by clicking on individual entries
-
-### 🛡️ Blocking Rules
-1. IP Blocking:
-   - 🚫 Navigate to the "Blocking Rules" section
-   - ➕ Add IP addresses to block
-   - 📋 View and manage blocked IPs
-
-2. Port Blocking:
-   - 🔒 Add source or destination ports to block
-   - ⚙️ Set port blocking rules by protocol
-
-### ⚠️ Alerts
-- 🎚️ Configure alert thresholds in the settings
-- 🔔 View alerts in real-time
-- 📤 Export alert logs
-- 📧 Receive email notifications for critical events
-
-### 📊 Traffic Analysis
-- 📈 View traffic patterns and statistics
-- 🔄 Analyze protocol distribution
-- 📉 Monitor network throughput
-- 🌐 Track DNS queries and responses
-
-## ❗ Troubleshooting
-
-1. If Suricata fails to start:
-   - 🔍 Check if the network interface is correct in suricata.yaml
-   - 📝 Run `sudo suricata -T -c /etc/suricata/suricata.yaml` to test configuration
-   - 🔑 Check system permissions for log directories
-   - 💾 Verify memory settings match your system capabilities
-   - 🌐 Ensure the network interface supports monitoring mode
-
-2. If the backend server fails:
-   - ✅ Verify Python virtual environment is activated
-   - 📦 Check all dependencies are installed
-   - 🔌 Verify port 5000 is available
-   - 📁 Check if Suricata logs exist and are readable
-
-3. If the frontend fails to connect:
-   - 🔄 Check if backend server is running
-   - 🌐 Verify WebSocket connection
-   - 🔍 Check browser console for errors
-   - 📊 Verify data is being written to eve.json
-
-## 👥 Team Members
-1. Mohamed Saied
-2. Mohamed Tarek
-3. Kamel Ahmed
-4. larry shenouda
-
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
