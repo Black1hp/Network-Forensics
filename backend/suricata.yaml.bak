@@ -51,9 +51,6 @@ outputs:
             answer: yes
         - alert:
             tagged-packets: yes
-        - files:
-            force-magic: yes
-            force-hash: [sha256]
   - fast:
       enabled: yes
       filename: /var/log/suricata/fast.log
@@ -61,15 +58,6 @@ outputs:
   - stats:
       enabled: yes
       filename: stats.log
-  - file-store:
-      enabled: yes
-      log-dir: /var/log/suricata/filestore
-      force-hash: [sha256]
-      force-filestore: yes
-      stream-depth: 0
-      waldo:
-        enabled: yes
-        filepath: /var/log/suricata/filestore.waldo
 
 logging:
   default-log-level: notice
@@ -103,16 +91,6 @@ app-layer:
         enabled: yes
         detection-ports:
           dp: 53
-    http:
-      enabled: yes
-    ftp:
-      enabled: yes
-    smtp:
-      enabled: yes
-    smb:
-      enabled: yes
-    nfs:
-      enabled: yes
 
 flow:
   memcap: 128mb
@@ -142,6 +120,5 @@ default-rule-path: /var/lib/suricata/rules
 rule-files:
   - suricata.rules
   - /var/lib/suricata/rules/MITM.rules
-  - /var/lib/suricata/rules/file-extraction.rules
 classification-file: /etc/suricata/classification.config
 reference-config-file: /etc/suricata/reference.config
