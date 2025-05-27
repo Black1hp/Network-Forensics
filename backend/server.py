@@ -12,6 +12,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import socket # Not directly used in original server.py but often related to network apps
 import sys # Not directly used in original server.py
+import numpy as np
 from queue import Queue, Empty
 import concurrent.futures
 import time
@@ -21,6 +22,10 @@ import smtplib # Added for email sending
 import pandas as pd
 import joblib # Requires scikit-learn
 from collections import defaultdict
+
+# Import detectors
+from backend.malware_detector import process_suricata_event as detect_malware
+from backend.icmp_detector import process_suricata_event as detect_icmp_flood
 
 load_dotenv() # Ensure this is called early
 
@@ -108,35 +113,223 @@ def send_email_alert(subject, body_data, alert_type_for_email_subject="NIDS Aler
         msg["To"] = ADMIN_EMAIL
         msg["Subject"] = f"🚨 {alert_type_for_email_subject}: {subject}"
 
-        # Corrected f-strings in HTML content
+        # Current time formatting
+        time_str = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        # Select alert color based on alert type
+        alert_color = "#f44336"  # Default red
+        if "ICMP" in alert_type_for_email_subject:
+            alert_color = "#FF9800"  # Orange for ICMP
+        elif "Port Scan" in alert_type_for_email_subject:
+            alert_color = "#9C27B0"  # Purple for Port Scan
+        elif "Malware" in alert_type_for_email_subject:
+            alert_color = "#E91E63"  # Pink for Malware
+        
+        # Create plain text version with enhanced details
+        text_content = f"""Network Intrusion Detection System Alert: {subject}
+
+Time: {time_str}
+Alert Type: {alert_type_for_email_subject}
+"""
+        
+        # Format specific details based on alert type
+        if "Port Scan" in alert_type_for_email_subject:
+            attacker_ip = body_data.get("source_ip", body_data.get("sourceIP", "Unknown"))
+            target_ip = body_data.get("dest_ip", body_data.get("destinationIP", "Unknown"))
+            ports = body_data.get("ports", [])
+            ports_str = ", ".join(str(p) for p in ports) if ports else "Unknown"
+            text_content += f"Attack Details:\n"
+            text_content += f"Attacker IP: {attacker_ip}\n"
+            text_content += f"Target IP: {target_ip}\n"
+            text_content += f"Ports Scanned: {ports_str}\n"
+        elif "ICMP" in alert_type_for_email_subject:
+            attacker_ip = body_data.get("source_ip", body_data.get("sourceIP", "Unknown"))
+            target_ip = body_data.get("destination_ip", body_data.get("destinationIP", "Unknown"))
+            packets_per_second = body_data.get("packets_per_second", "Unknown")
+            bytes_per_second = body_data.get("bytes_per_second", "Unknown")
+            text_content += f"Attack Details:\n"
+            text_content += f"Attacker IP: {attacker_ip}\n"
+            text_content += f"Target IP: {target_ip}\n"
+            text_content += f"Packets/sec: {packets_per_second}\n"
+            text_content += f"Bytes/sec: {bytes_per_second}\n"
+        elif "Malware" in alert_type_for_email_subject:
+            filename = body_data.get("filename", "Unknown")
+            url = body_data.get("url", "Unknown")
+            file_hash = body_data.get("hash", "Unknown")
+            verdict = body_data.get("verdict", "Unknown")
+            text_content += f"Malware Details:\n"
+            text_content += f"Filename: {filename}\n"
+            text_content += f"URL: {url}\n"
+            text_content += f"SHA256: {file_hash}\n"
+            text_content += f"Verdict: {verdict}\n"
+        else:
+            # Generic format for other alert types
+            text_content += "Details:\n"
+            for key, value in body_data.items():
+                if key != "timestamp" and key != "type":
+                    text_content += f"{key.replace('_', ' ').title()}: {value}\n"
+        
+        # Create enhanced HTML version
         html = f"""
-        <html><head><style>
-        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 20px; }}
-        .container {{ max-width: 600px; margin: auto; background-color: #f8f9fa; padding: 20px; border-radius: 5px; border: 1px solid #ddd; }}
-        .header {{ background-color: #dc3545; color: white; padding: 15px; border-radius: 5px 5px 0 0; margin: -20px -20px 20px -20px; text-align: center; }}
-        .warning-icon {{ font-size: 48px; margin-bottom: 10px; }}
-        .details-box {{ background-color: white; padding: 15px; border-radius: 5px; margin-top: 20px; border: 1px solid #ddd; }}
-        .info-item {{ margin-bottom: 10px; }}
-        .label {{ font-weight: bold; color: #555; }}
-        .value {{ color: #333; }}
-        .value.danger {{ color: #dc3545; font-weight: bold; }}
-        .footer {{ margin-top: 20px; text-align: center; font-size: 12px; color: #777; }}
-        .timestamp {{ text-align: right; color: #777; font-size: 12px; margin-top: 10px; }}
-        </style></head><body><div class="container">
-        <div class="header"><div class="warning-icon">⚠️</div><h2>Security Alert Detected</h2></div>
-        <div class="info-item"><span class="label">Alert Type:</span> <span class="value danger">{body_data.get('type', 'N/A')}</span></div>
-        <div class="info-item"><span class="label">Description:</span> <span class="value">{body_data.get('details', 'N/A')}</span></div>
-        <div class="details-box"><h3>🔍 Additional Information:</h3>
-        <div class="info-item"><span class="label">Source IP:</span> <span class="value">{body_data.get('source_ip', 'N/A')}</span></div>
-        <div class="info-item"><span class="label">Destination IP:</span> <span class="value">{body_data.get('dest_ip', 'N/A')}</span></div>
-        <div class="info-item"><span class="label">Protocol:</span> <span class="value">{body_data.get('protocol', 'N/A')}</span></div>
-        <div class="info-item"><span class="label">Port(s):</span> <span class="value">{body_data.get('port', body_data.get('ports_hit', 'N/A'))}</span></div></div>
-        <div class="timestamp">Detected at: {body_data.get('timestamp', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}</div>
-        <div class="footer"><p>This is an automated alert from your NIDS. Please investigate.</p></div>
-        </div></body></html>
+        <html>
+        <head>
+            <style>
+                body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+                .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+                .header {{ background-color: {alert_color}; color: white; padding: 15px; text-align: center; border-radius: 5px 5px 0 0; }}
+                .content {{ padding: 20px; border: 1px solid #ddd; border-top: none; }}
+                .footer {{ font-size: 12px; color: #777; text-align: center; margin-top: 20px; padding: 10px; background-color: #f8f8f8; border-radius: 0 0 5px 5px; }}
+                table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
+                th, td {{ padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }}
+                th {{ background-color: #f2f2f2; width: 30%; }}
+                .alert-badge {{ display: inline-block; padding: 5px 10px; background-color: {alert_color}; color: white; border-radius: 3px; margin-bottom: 15px; }}
+                .timestamp {{ color: #666; font-style: italic; margin-bottom: 15px; }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <h2>Network Intrusion Detection System</h2>
+                </div>
+                <div class="content">
+                    <div class="alert-badge">{alert_type_for_email_subject}</div>
+                    <h3>{subject}</h3>
+                    <div class="timestamp">Detected at: {time_str}</div>
         """
-        # Corrected f-strings in text_content
-        text_content = f"{alert_type_for_email_subject}: {subject}\nType: {body_data.get('type', 'N/A')}\nDetails: {body_data.get('details', 'N/A')}\nSource IP: {body_data.get('source_ip', 'N/A')}\nDestination IP: {body_data.get('dest_ip', 'N/A')}\nProtocol: {body_data.get('protocol', 'N/A')}\nPort(s): {body_data.get('port', body_data.get('ports_hit', 'N/A'))}\nTimestamp: {body_data.get('timestamp', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))}"
+        
+        # Customize HTML content based on alert type
+        if "Port Scan" in alert_type_for_email_subject:
+            attacker_ip = body_data.get("source_ip", body_data.get("sourceIP", "Unknown"))
+            target_ip = body_data.get("dest_ip", body_data.get("destinationIP", "Unknown"))
+            ports = body_data.get("ports", [])
+            ports_str = ", ".join(str(p) for p in ports) if ports else "Unknown"
+            details = body_data.get("details", "No additional details available")
+            
+            html += f"""
+                    <h4>Attack Details</h4>
+                    <table>
+                        <tr>
+                            <th>Attacker IP</th>
+                            <td><strong>{attacker_ip}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Target IP</th>
+                            <td>{target_ip}</td>
+                        </tr>
+                        <tr>
+                            <th>Ports Scanned</th>
+                            <td>{ports_str}</td>
+                        </tr>
+                        <tr>
+                            <th>Details</th>
+                            <td>{details}</td>
+                        </tr>
+                    </table>
+                    <p>This port scan may indicate reconnaissance activity or an attempt to identify open services.</p>
+            """
+        elif "ICMP" in alert_type_for_email_subject:
+            attacker_ip = body_data.get("source_ip", body_data.get("sourceIP", "Unknown"))
+            target_ip = body_data.get("destination_ip", body_data.get("destinationIP", "Unknown"))
+            packets_per_second = body_data.get("packets_per_second", "Unknown")
+            bytes_per_second = body_data.get("bytes_per_second", "Unknown")
+            packet_count = body_data.get("packet_count", "Unknown")
+            time_window = body_data.get("time_window", "Unknown")
+            
+            html += f"""
+                    <h4>ICMP Flood Attack Details</h4>
+                    <table>
+                        <tr>
+                            <th>Attacker IP</th>
+                            <td><strong>{attacker_ip}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Target IP</th>
+                            <td>{target_ip}</td>
+                        </tr>
+                        <tr>
+                            <th>Attack Rate</th>
+                            <td>{packets_per_second} packets/sec</td>
+                        </tr>
+                        <tr>
+                            <th>Data Rate</th>
+                            <td>{bytes_per_second} bytes/sec</td>
+                        </tr>
+                        <tr>
+                            <th>Packet Count</th>
+                            <td>{packet_count}</td>
+                        </tr>
+                        <tr>
+                            <th>Time Window</th>
+                            <td>{time_window}</td>
+                        </tr>
+                    </table>
+                    <p>This ICMP flood may be attempting to consume network bandwidth or cause a denial of service.</p>
+            """
+        elif "Malware" in alert_type_for_email_subject:
+            filename = body_data.get("filename", "Unknown")
+            url = body_data.get("url", "Unknown")
+            file_hash = body_data.get("hash", "Unknown")
+            verdict = body_data.get("verdict", "Unknown")
+            details = body_data.get("details", "No additional details available")
+            
+            # Set verdict color
+            verdict_color = "#4CAF50"  # Green for CLEAN
+            if verdict == "MALICIOUS":
+                verdict_color = "#f44336"  # Red
+            elif verdict == "SUSPICIOUS":
+                verdict_color = "#FF9800"  # Orange
+            elif verdict == "ERROR":
+                verdict_color = "#607D8B"  # Blue Grey
+                
+            html += f"""
+                    <h4>Malware Detection Details</h4>
+                    <table>
+                        <tr>
+                            <th>Filename</th>
+                            <td><strong>{filename}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>URL</th>
+                            <td><a href="{url}">{url}</a></td>
+                        </tr>
+                        <tr>
+                            <th>SHA256 Hash</th>
+                            <td><code>{file_hash}</code></td>
+                        </tr>
+                        <tr>
+                            <th>Verdict</th>
+                            <td><span style="color: {verdict_color}; font-weight: bold;">{verdict}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Details</th>
+                            <td>{details}</td>
+                        </tr>
+                    </table>
+                    <p>This file was detected during network traffic monitoring and may pose a security risk.</p>
+            """
+        else:
+            # Generic table for other alert types
+            html += "<h4>Alert Details</h4><table>"
+            for key, value in body_data.items():
+                if key != "timestamp" and key != "type":
+                    html += f"""
+                        <tr>
+                            <th>{key.replace('_', ' ').title()}</th>
+                            <td>{value}</td>
+                        </tr>
+                    """
+            html += "</table>"
+        
+        html += """
+                </div>
+                <div class="footer">
+                    <p>This alert was automatically generated by the Network Intrusion Detection System.</p>
+                    <p>Time: {time_str}</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
 
         msg.attach(MIMEText(text_content, "plain"))
         msg.attach(MIMEText(html, "html"))
@@ -146,6 +339,7 @@ def send_email_alert(subject, body_data, alert_type_for_email_subject="NIDS Aler
             server.login(SENDER_EMAIL, SENDER_PASSWORD)
             server.send_message(msg)
         logger.info(f"Alert email sent for {alert_type_for_email_subject}: {subject}")
+        return True
     except Exception as e:
         logger.error(f"Failed to send email alert for {subject}: {e}", exc_info=True)
 
@@ -254,18 +448,58 @@ def ml_process_eve_event_integrated(eve_line_str):
                 alert_key = f"ml_port_scan_{src_ip_evt}_{ML_TARGET_IP}"
                 if alert_tracker.should_send_alert(alert_key, ML_ALERT_COOLDOWN_MINUTES):
                     ports_hit_sorted = sorted(list(unique_ports_hit))
+                    # Format the ports hit information in a more readable way
+                    ports_str = ", ".join([str(p) for p in ports_hit_sorted])
+                    
+                    # Get common service names for the most critical ports
+                    port_service_map = {
+                        21: "FTP", 22: "SSH", 23: "Telnet", 25: "SMTP", 53: "DNS", 80: "HTTP", 
+                        443: "HTTPS", 445: "SMB", 3306: "MySQL", 3389: "RDP", 5432: "PostgreSQL", 
+                        8080: "HTTP-ALT", 8443: "HTTPS-ALT"
+                    }
+                    
+                    # Identify critical ports that were scanned
+                    critical_services = []
+                    for port in ports_hit_sorted:
+                        if port in port_service_map:
+                            critical_services.append(f"{port} ({port_service_map[port]})")
+                    
+                    # Create enhanced subject and details
                     alert_subject = f"Port Scan Detected from {src_ip_evt}"
                     
+                    # Format time for human readability
+                    human_time = datetime.fromtimestamp(current_timestamp_float).strftime('%Y-%m-%d %H:%M:%S')
+                    
+                    # Create detailed scan information
+                    scan_details = f"ML model detected a port scan from {src_ip_evt} targeting {ML_TARGET_IP}.\n"
+                    scan_details += f"Total ports scanned: {len(ports_hit_sorted)}\n"
+                    
+                    if critical_services:
+                        scan_details += f"Critical services targeted: {', '.join(critical_services)}\n"
+                    
+                    # Determine scanning technique based on port distribution
+                    ports_array = np.array(ports_hit_sorted)
+                    sequential_scan = False
+                    if len(ports_hit_sorted) > 5:
+                        diffs = np.diff(ports_array)
+                        if np.median(diffs) == 1:
+                            sequential_scan = True
+                    
+                    scan_type = "Sequential port scan" if sequential_scan else "Distributed port scan"
+                    scan_details += f"Scan type: {scan_type}"
+                    
+                    # Enhanced alert data with more detailed information
                     alert_data = {
                         "id": str(uuid.uuid4()),
                         "type": "ML Port Scan",
-                        "details": f"ML model detected a port scan from {src_ip_evt} targeting {ML_TARGET_IP}. Ports hit: {ports_hit_sorted}",
+                        "details": scan_details,
                         "source_ip": src_ip_evt,
                         "dest_ip": ML_TARGET_IP,
                         "protocol": "TCP",
                         "port": "Multiple",
+                        "ports": ports_hit_sorted,  # For compatibility with our email template
                         "ports_hit": ports_hit_sorted,
-                        "timestamp": datetime.fromtimestamp(current_timestamp_float).isoformat(),
+                        "timestamp": human_time,
                         "sourceIP": src_ip_evt, 
                         "destinationIP": ML_TARGET_IP,
                         "sourcePort": 0,
@@ -273,8 +507,13 @@ def ml_process_eve_event_integrated(eve_line_str):
                         "application_protocol": "ML_SCAN",
                         "activity": "ML Port Scan Detected",
                         "isSuspicious": True,
-                        "size": 0,
-                        "features": {"ports_scanned": ports_hit_sorted},
+                        "size": len(ports_hit_sorted),
+                        "scan_time": human_time,
+                        "features": {
+                            "ports_scanned": ports_hit_sorted,
+                            "scan_type": scan_type,
+                            "critical_services": critical_services if critical_services else "None"
+                        },
                         "risk_level": "HIGH"
                     }
 
@@ -502,6 +741,110 @@ class SuricataHandler:
             with self.processing_lock:
                 self.packet_buffer.append(packet_for_ui)
                 if len(self.packet_buffer) > 1000: self.packet_buffer.pop(0)
+                
+            # Check for malware in the event
+            try:
+                malware_result = detect_malware(suricata_event_data)
+                if malware_result:
+                    # Create malware alert
+                    malware_alert = {
+                        "id": str(uuid.uuid4()),
+                        "timestamp": datetime.now().isoformat(),
+                        "src_ip": source_ip,
+                        "dest_ip": dest_ip,
+                        "src_port": source_port,
+                        "dest_port": dest_port,
+                        "protocol": protocol,
+                        "app_proto": "HTTP",
+                        "activity_type": "malware_download",
+                        "risk_level": "high",
+                        "filename": malware_result.get("filename", "unknown"),
+                        "file_hash": malware_result.get("hash", ""),
+                        "url": malware_result.get("url", ""),
+                        "verdict": malware_result.get("result", {}).get("verdict", "UNKNOWN")
+                    }
+                    
+                    # Send alert to UI
+                    socketio.emit("new_packet", malware_alert)
+                    
+                    # Add to packet buffer
+                    with self.processing_lock:
+                        self.packet_buffer.append(malware_alert)
+                        if len(self.packet_buffer) > 1000: self.packet_buffer.pop(0)
+                    
+                    # Send email alert for malware
+                    alert_key = f"malware_{malware_result.get('hash', '')}"
+                    if alert_tracker.should_send_alert(alert_key, GENERAL_ALERT_COOLDOWN_MINUTES):
+                        alert_tracker.update_alert_timestamp(alert_key, malware_result)
+                        
+                        # Prepare email alert
+                        subject = f"ALERT: Malware Download Detected - {malware_result.get('filename', 'unknown')}"
+                        body_data = {
+                            "alert_type": "Malware Download",
+                            "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            "filename": malware_result.get("filename", "unknown"),
+                            "url": malware_result.get("url", ""),
+                            "hash": malware_result.get("hash", ""),
+                            "verdict": malware_result.get("result", {}).get("verdict", "UNKNOWN"),
+                            "details": f"VirusTotal detection: {malware_result.get('result', {}).get('malicious', 0)}/{malware_result.get('result', {}).get('total', 0)}"
+                        }
+                        
+                        # Send email alert
+                        send_email_alert(subject, body_data, "Malware Alert")
+            except Exception as e:
+                logger.error(f"Error in malware detection: {e}", exc_info=True)
+                
+            # Check for ICMP flood attacks
+            try:
+                icmp_result = detect_icmp_flood(suricata_event_data)
+                if icmp_result:
+                    # Create ICMP flood alert
+                    icmp_alert = {
+                        "id": str(uuid.uuid4()),
+                        "timestamp": datetime.now().isoformat(),
+                        "src_ip": icmp_result.get("src_ip"),
+                        "dest_ip": icmp_result.get("dst_ip"),
+                        "src_port": source_port,
+                        "dest_port": dest_port,
+                        "protocol": "ICMP",
+                        "app_proto": "ICMP",
+                        "activity_type": "icmp_flood",
+                        "risk_level": "high",
+                        "packets_per_second": icmp_result.get("packets_per_second"),
+                        "bytes_per_second": icmp_result.get("bytes_per_second"),
+                        "packet_count": icmp_result.get("packet_count")
+                    }
+                    
+                    # Send alert to UI
+                    socketio.emit("new_packet", icmp_alert)
+                    
+                    # Add to packet buffer
+                    with self.processing_lock:
+                        self.packet_buffer.append(icmp_alert)
+                        if len(self.packet_buffer) > 1000: self.packet_buffer.pop(0)
+                    
+                    # Send email alert for ICMP flood
+                    alert_key = f"icmp_flood_{icmp_result.get('src_ip')}_{icmp_result.get('dst_ip')}"
+                    if alert_tracker.should_send_alert(alert_key, GENERAL_ALERT_COOLDOWN_MINUTES):
+                        alert_tracker.update_alert_timestamp(alert_key, icmp_result)
+                        
+                        # Prepare email alert
+                        subject = f"ALERT: ICMP Flood Attack Detected from {icmp_result.get('src_ip')}"
+                        body_data = {
+                            "alert_type": "ICMP Flood Attack",
+                            "timestamp": datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            "source_ip": icmp_result.get("src_ip"),
+                            "destination_ip": icmp_result.get("dst_ip"),
+                            "packets_per_second": f"{icmp_result.get('packets_per_second'):.2f}",
+                            "bytes_per_second": f"{icmp_result.get('bytes_per_second'):.2f}",
+                            "packet_count": str(icmp_result.get("packet_count")),
+                            "time_window": f"{icmp_result.get('time_window', 0):.2f} seconds"
+                        }
+                        
+                        # Send email alert
+                        send_email_alert(subject, body_data, "ICMP Flood Alert")
+            except Exception as e:
+                logger.error(f"Error in ICMP flood detection: {e}", exc_info=True)
 
         except Exception as e:
             logger.error(f"Error in SuricataHandler.process_suricata_data: {e}", exc_info=True)

@@ -10,7 +10,7 @@ import argparse
 import os
 
 # --- Configuration (matches user's script) ---
-target_ip = "192.168.1.10" # Default, can be overridden by args if implemented
+target_ip = "192.168.1.12" # Default, can be overridden by args if implemented
 scan_threshold = 5  # Number of unique ports hit from a source IP
 time_interval = 5  # Seconds for the detection window
 
