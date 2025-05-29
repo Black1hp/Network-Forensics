@@ -15,9 +15,9 @@ load_dotenv()
 # Email configuration
 SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
-SENDER_EMAIL = os.getenv("SENDER_EMAIL", "blackhatcys@gmail.com")
-SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "xpdd kbqv vyol msjd")
-ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "mohamed230104326@sut.edu.eg")
+SENDER_EMAIL = os.getenv("SENDER_EMAIL", "")  # Email should be in .env file
+SENDER_PASSWORD = os.getenv("SENDER_PASSWORD", "")  # Password should be in .env file
+ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")  # Admin email should be in .env file
 
 def test_email_sending():
     """Test email sending functionality."""

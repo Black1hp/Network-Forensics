@@ -1,0 +1,42 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+secrets/
+credentials.json
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+*.tmp
+.DS_Store
+.vscode/
+.idea/
+
+# Keep ML model files - explicitly include .pkl files that are normally excluded
+!backend/ml_port_scan_detector/*.pkl
+
+# Suricata temporary files
+*.pcap
+*.pcapng
+*.rules.bak
+
+# Test files that shouldn't be committed
+test_results/
+test_downloads/
+
+# VirusTotal API results
+backend/malware_detector/vt_results.txt
+backend/malware_detector/hashes.txt
